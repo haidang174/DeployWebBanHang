@@ -96,7 +96,7 @@
                         <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition group">
                             <a href="{{ route('products.show', $product->id) }}">
                                 <div class="relative overflow-hidden">
-                                    <img src="{{ $product->main_image_url }}" 
+                                    <img src="{{ $product->mainImage?->url ?? asset('images/no-image.png')  }}" 
                                          alt="{{ $product->product_name }}"
                                          class="w-full h-64 object-cover group-hover:scale-110 transition duration-300">
                                     

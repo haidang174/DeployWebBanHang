@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -61,15 +62,10 @@ class Product extends Model
 
     public function getMainImageUrlAttribute()
     {
-        // Thêm asset('storage/...')
-        $mainImage = $this->mainImage;
-        
-        if ($mainImage) {
-            // Dùng accessor 'url' từ ProductImage model
-            return $mainImage->url;
+        if ($this->mainImage?->image_url) {
+            return Storage::url($this->mainImage->image_url);
         }
-        
-        // Trả về ảnh mặc định nếu không có ảnh
+
         return asset('images/default-product.jpg');
     }
 
