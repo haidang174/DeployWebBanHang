@@ -23,20 +23,19 @@ class ProductImage extends Model
     // THÊM DÒNG NÀY: Tự động append attribute 'url' vào JSON
     protected $appends = ['url'];
 
-    // THÊM ACCESSOR NÀY: Tạo URL đầy đủ cho ảnh
+    /**
+     * Accessor tạo URL cho ảnh
+     * Ảnh lưu trong public/storage/products/
+     */
     public function getUrlAttribute()
     {
-        // Kiểm tra nếu image_url đã là URL đầy đủ
+        // Nếu đã là URL đầy đủ
         if (filter_var($this->image_url, FILTER_VALIDATE_URL)) {
             return $this->image_url;
         }
 
-        // Kiểm tra nếu file tồn tại trong storage/app/public
-        if (Storage::disk('public')->exists($this->image_url)) {
-            return Storage::disk('public')->url($this->image_url);
-        }
-
-        // Fallback: Tạo URL trực tiếp
+        // Database lưu: products/abc.jpg
+        // Trả về: /storage/products/abc.jpg
         return asset('storage/' . $this->image_url);
     }
 

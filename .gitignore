@@ -22,3 +22,10 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Ignore storage nhưng KHÔNG ignore public/storage/products
+/storage
+!/public/storage
+/public/storage/*
+!/public/storage/products
+!/public/storage/products/*
