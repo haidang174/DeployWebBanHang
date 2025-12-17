@@ -95,22 +95,10 @@
                     @foreach($products as $product)
                         <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition group">
                             <a href="{{ route('products.show', $product->id) }}">
-                                <div class="relative overflow-hidden bg-gray-100">
-                                    @if($product->mainImage)
-                                        {{-- Cloudinary optimized image với lazy loading --}}
-                                        <img 
-                                            src="{{ $product->mainImage->getPlaceholderUrl(50) }}" 
-                                            data-src="{{ $product->mainImage->getTransformedUrl(400, 400, 'fill') }}"
-                                            data-srcset="{{ $product->mainImage->getSrcset([300, 400, 600]) }}"
-                                            sizes="(max-width: 640px) 300px, (max-width: 1024px) 400px, 400px"
-                                            alt="{{ $product->product_name }}"
-                                            class="lazyload w-full h-64 object-cover group-hover:scale-110 transition duration-300">
-                                    @else
-                                        {{-- Fallback no image --}}
-                                        <img src="{{ asset('images/no-image.png') }}" 
-                                             alt="{{ $product->product_name }}"
-                                             class="w-full h-64 object-cover">
-                                    @endif
+                                <div class="relative overflow-hidden">
+                                    <img src="{{ $product->main_image_url }}"
+                                         alt="{{ $product->product_name }}"
+                                         class="w-full h-64 object-cover group-hover:scale-110 transition duration-300">
                                     
                                     @if($product->created_at->diffInDays() < 7)
                                         <span class="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
@@ -134,7 +122,7 @@
                                                 <span class="text-xl font-bold text-blue-600">{{ number_format($minPrice, 0, ',', '.') }}đ</span>
                                             @else
                                                 <span class="text-lg font-bold text-blue-600">
-                                                    {{ number_format($minPrice, 0, ',', '.') }}đ - {{ number_format($maxPrice, 0, ',', '.') }}đ
+                                                    {{ number_format($minPrice, 0, ',', '.') }}đ
                                                 </span>
                                             @endif
                                         </div>
@@ -171,23 +159,4 @@
         </main>
     </div>
 </div>
-
-{{-- Lazy loading script --}}
-@push('scripts')
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.3.2/lazysizes.min.js" async></script>
-@endpush
-
-{{-- Optional: CSS cho blur effect khi lazy load --}}
-@push('styles')
-<style>
-    .lazyload,
-    .lazyloading {
-        opacity: 0;
-    }
-    .lazyloaded {
-        opacity: 1;
-        transition: opacity 300ms;
-    }
-</style>
-@endpush
 @endsection

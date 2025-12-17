@@ -9,7 +9,7 @@ use App\Models\ProductImage;
 use App\Models\ProductAttribute;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -72,24 +72,13 @@ class ProductController extends Controller
                 $mainImageIndex = $request->input('main_image_index', 0);
                 
                 foreach ($request->file('images') as $index => $image) {
-                    // Upload lên Cloudinary
-                    $uploadedFile = Cloudinary::upload($image->getRealPath(), [
-                        'folder' => 'products',
-                        'transformation' => [
-                            'quality' => 'auto',
-                            'fetch_format' => 'auto'
-                        ]
-                    ]);
-                    
-                    // Lấy URL từ Cloudinary
-                    $cloudinaryUrl = $uploadedFile->getSecurePath();
-                    $publicId = $uploadedFile->getPublicId(); // Lưu public_id để xóa sau này
+                    // Lưu file vào storage/app/public/products
+                    $path = $image->store('products', 'public');
                     
                     // Lưu vào database
                     ProductImage::create([
                         'product_id' => $product->id,
-                        'image_url' => $cloudinaryUrl,
-                        'cloudinary_public_id' => $publicId, // Thêm field này vào database
+                        'image_url' => $path,
                         'is_main' => ($index == $mainImageIndex) ? 1 : 0,
                     ]);
                 }
