@@ -15,6 +15,15 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 
+Route::get('/storage/{path}', function ($path) {
+    $file = storage_path('app/public/' . $path);
+    
+    if (!file_exists($file)) {
+        abort(404);
+    }
+    
+    return response()->file($file);
+})->where('path', '.*');
 // ============ FRONTEND ROUTES ============
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/about', [HomeController::class, 'about'])->name('about');
