@@ -9,7 +9,7 @@ use App\Models\ProductImage;
 use App\Models\ProductAttribute;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ProductController extends Controller
 {
@@ -67,18 +67,27 @@ class ProductController extends Controller
                 'base_price' => $validated['base_price'],
             ]);
 
-            // Xử lý upload ảnh
+            // Xử lý upload ảnh lên Cloudinary
             if ($request->hasFile('images')) {
                 $mainImageIndex = $request->input('main_image_index', 0);
                 
                 foreach ($request->file('images') as $index => $image) {
-                    // Lưu file vào storage/app/public/products
-                    $path = $image->store('products', 'public');
+                    // Upload lên Cloudinary
+                    $uploadedFile = Cloudinary::upload($image->getRealPath(), [
+                        'folder' => 'products',
+                        'transformation' => [
+                            'quality' => 'auto',
+                            'fetch_format' => 'auto'
+                        ]
+                    ]);
+                    
+                    // Chỉ lưu public_id
+                    $publicId = $uploadedFile->getPublicId();
                     
                     // Lưu vào database
                     ProductImage::create([
                         'product_id' => $product->id,
-                        'image_url' => $path,
+                        'image_url' => $publicId, // Lưu public_id thay vì URL
                         'is_main' => ($index == $mainImageIndex) ? 1 : 0,
                     ]);
                 }
@@ -87,7 +96,6 @@ class ProductController extends Controller
             // Lưu các phân loại (attributes/variants)
             if (!empty($validated['attributes'])) {
                 foreach ($validated['attributes'] as $attribute) {
-                    // Chỉ lưu nếu có đủ giá và số lượng
                     if (isset($attribute['price']) && isset($attribute['quantity'])) {
                         ProductAttribute::create([
                             'product_id' => $product->id,
@@ -172,7 +180,16 @@ class ProductController extends Controller
                 $isFirstImage = $currentImageCount == 0;
                 
                 foreach ($request->file('images') as $index => $image) {
-                    $path = $image->store('products', 'public');
+                    // Upload lên Cloudinary
+                    $uploadedFile = Cloudinary::upload($image->getRealPath(), [
+                        'folder' => 'products',
+                        'transformation' => [
+                            'quality' => 'auto',
+                            'fetch_format' => 'auto'
+                        ]
+                    ]);
+                    
+                    $publicId = $uploadedFile->getPublicId();
                     
                     // Set main image nếu được chỉ định hoặc là ảnh đầu tiên
                     $isMain = false;
@@ -186,7 +203,7 @@ class ProductController extends Controller
                     
                     ProductImage::create([
                         'product_id' => $product->id,
-                        'image_url' => $path,
+                        'image_url' => $publicId, // Lưu public_id
                         'is_main' => $isMain,
                     ]);
                 }
@@ -197,7 +214,6 @@ class ProductController extends Controller
                 foreach ($validated['attributes'] as $attrData) {
                     // Check if marked for deletion
                     if (isset($attrData['deleted']) && $attrData['deleted'] == '1') {
-                        // Only delete if it has an ID (existing record)
                         if (!empty($attrData['id'])) {
                             ProductAttribute::where('id', $attrData['id'])
                                 ->where('product_id', $product->id)
@@ -208,7 +224,6 @@ class ProductController extends Controller
 
                     // Update existing or create new
                     if (!empty($attrData['id'])) {
-                        // Update existing attribute
                         ProductAttribute::where('id', $attrData['id'])
                             ->where('product_id', $product->id)
                             ->update([
@@ -218,7 +233,6 @@ class ProductController extends Controller
                                 'quantity' => $attrData['quantity'],
                             ]);
                     } else {
-                        // Create new attribute
                         ProductAttribute::create([
                             'product_id' => $product->id,
                             'size' => $attrData['size'] ?? null,
@@ -249,10 +263,15 @@ class ProductController extends Controller
         DB::beginTransaction();
         
         try {
-            // Xóa images từ storage
+            // Xóa images từ Cloudinary
             foreach ($product->images as $image) {
-                if (Storage::disk('public')->exists($image->image_url)) {
-                    Storage::disk('public')->delete($image->image_url);
+                if (!empty($image->image_url)) {
+                    try {
+                        Cloudinary::destroy($image->image_url); // image_url chứa public_id
+                    } catch (\Exception $e) {
+                        // Log error nhưng vẫn tiếp tục xóa
+                        \Log::warning('Failed to delete image from Cloudinary: ' . $e->getMessage());
+                    }
                 }
             }
 
@@ -286,9 +305,13 @@ class ProductController extends Controller
                 ], 400);
             }
             
-            // Delete file from storage
-            if (Storage::disk('public')->exists($image->image_url)) {
-                Storage::disk('public')->delete($image->image_url);
+            // Delete from Cloudinary
+            if (!empty($image->image_url)) {
+                try {
+                    Cloudinary::destroy($image->image_url); // image_url chứa public_id
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to delete image from Cloudinary: ' . $e->getMessage());
+                }
             }
             
             // Delete from database

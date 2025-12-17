@@ -399,7 +399,7 @@
                          <td>
                          <div class="product-info">
                               @if($detail->product_image)
-                                   <img src="{{ asset('storage/' . $detail->product_image) }}" 
+                                   <img src="{{ $detail->product_image }}" 
                                         alt="{{ $detail->product_name }}" 
                                         class="product-image">
                               @endif

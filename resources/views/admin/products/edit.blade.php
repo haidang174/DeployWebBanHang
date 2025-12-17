@@ -145,7 +145,7 @@
                          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
                               @foreach($product->images as $image)
                               <div class="relative group" x-data="{ deleting: false }">
-                                   <img src="{{ asset('storage/' . $image->image_url) }}" 
+                                   <img src="{{ $image->image_url }}" 
                                         alt="{{ $product->product_name }}"
                                         class="w-full h-32 object-cover rounded-lg border-2 border-gray-200">
                                    

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 class ProductImage extends Model
 {
@@ -20,24 +19,27 @@ class ProductImage extends Model
         'is_main' => 'boolean',
     ];
 
-    // THÊM DÒNG NÀY: Tự động append attribute 'url' vào JSON
-    protected $appends = ['url'];
+    protected $appends = ['url']; // Tự động thêm 'url' khi serialize model
 
     /**
-     * Accessor tạo URL cho ảnh
-     * Ảnh lưu trong public/storage/products/
+     * Accessor để generate URL từ public_id
      */
     public function getUrlAttribute()
     {
-        // Nếu đã là URL đầy đủ
-        if (filter_var($this->image_url, FILTER_VALIDATE_URL)) {
-            return $this->image_url;
+        if (empty($this->attributes['image_url'])) {
+            return null;
         }
 
-        // Database lưu: products/abc.jpg
-        // Trả về: /storage/products/abc.jpg
-        return asset('storage/' . $this->image_url);
+        // Generate URL từ Cloudinary với transformations
+        return cloudinary()->getUrl($this->attributes['image_url'], [
+            'secure' => true,
+            'transformation' => [
+                'quality' => 'auto',
+                'fetch_format' => 'auto'
+            ]
+        ]);
     }
+    
     // Relationships
     public function product()
     {

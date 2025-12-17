@@ -25,9 +25,9 @@
             
             <div class="grid grid-cols-4 gap-2">
                 @foreach($product->images as $image)
-                    <div @click="mainImage = '{{ asset('storage/' . $image->image_url) }}'" 
+                    <div @click="mainImage = '{{ $image->image_url }}'" 
                         class="cursor-pointer bg-white rounded-lg shadow-md p-2 hover:shadow-lg transition">
-                        <img src="{{ asset('storage/' . $image->image_url) }}" 
+                        <img src="{{ $image->image_url }}" 
                             alt="{{ $product->product_name }}" 
                             class="w-full h-20 object-cover rounded">
                     </div>

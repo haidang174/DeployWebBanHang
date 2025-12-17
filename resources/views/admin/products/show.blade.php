@@ -309,7 +309,7 @@
             
             @if($product->mainImage)
                 <div class="mb-4">
-                    <img src="{{ asset('storage/' . $product->mainImage->image_url) }}" 
+                    <img src="{{ $product->mainImage->image_url }}" 
                         alt="{{ $product->product_name }}"
                         class="w-full h-64 object-cover rounded-lg shadow-md">
                     <div class="flex items-center justify-center gap-2 mt-2">
@@ -333,7 +333,7 @@
                 <div class="grid grid-cols-2 gap-2">
                     @foreach($product->images as $image)
                         <div class="relative">
-                            <img src="{{ asset('storage/' . $image->image_url) }}" 
+                            <img src="{{ $image->image_url }}" 
                                 alt="{{ $product->product_name }}"
                                 class="w-full h-24 object-cover rounded-lg shadow-sm hover:shadow-md transition">
                             @if($image->is_main)
