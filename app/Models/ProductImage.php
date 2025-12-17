@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ProductImage extends Model
 {
@@ -11,7 +12,7 @@ class ProductImage extends Model
 
     protected $fillable = [
         'product_id',
-        'image_url',
+        'image_url', // LƯU public_id
         'is_main',
     ];
 
@@ -26,18 +27,24 @@ class ProductImage extends Model
      */
     public function getUrlAttribute()
     {
-        if (empty($this->attributes['image_url'])) {
+        $publicId = $this->attributes['image_url'] ?? null;
+
+        if (!$publicId) {
             return null;
         }
 
-        // Generate URL từ Cloudinary với transformations
-        return cloudinary()->getUrl($this->attributes['image_url'], [
-            'secure' => true,
-            'transformation' => [
-                'quality' => 'auto',
-                'fetch_format' => 'auto'
-            ]
-        ]);
+        try {
+            return Cloudinary::getUrl($publicId, [
+                'secure' => true,
+                'transformation' => [
+                    'quality' => 'auto',
+                    'fetch_format' => 'auto',
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            // KHÔNG cho sập trang
+            return null;
+        }
     }
     
     // Relationships
