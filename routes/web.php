@@ -15,6 +15,21 @@ use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 
+// Route serve storage files
+Route::get('/storage/{path}', function ($path) {
+    if (!Storage::disk('public')->exists($path)) {
+        abort(404);
+    }
+    
+    $file = Storage::disk('public')->get($path);
+    $type = Storage::disk('public')->mimeType($path);
+    
+    return Response::make($file, 200, [
+        'Content-Type' => $type,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('path', '.*')->name('storage.file');
+
 // ============ FRONTEND ROUTES ============
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/about', [HomeController::class, 'about'])->name('about');
