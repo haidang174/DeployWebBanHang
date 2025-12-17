@@ -64,8 +64,9 @@ class Product extends Model
         // Thêm asset('storage/...')
         $mainImage = $this->mainImage;
         
-        if ($mainImage && $mainImage->image_url) {
-            return asset('storage/' . $mainImage->image_url);
+        if ($mainImage) {
+            // Dùng accessor 'url' từ ProductImage model
+            return $mainImage->url;
         }
         
         // Trả về ảnh mặc định nếu không có ảnh
