@@ -153,7 +153,7 @@
                               <td class="px-6 py-4">
                                    <div class="flex items-center gap-4">
                                         <div class="relative flex-shrink-0">
-                                             <img src="{{ $product->main_image_url }}" 
+                                             <img src="{{ $product->full_url }}" 
                                                   alt="{{ $product->product_name }}"
                                                   class="w-16 h-16 object-cover rounded-lg">
                                              @if($product->created_at->diffInDays() < 7)
