@@ -10,21 +10,40 @@ use App\Models\ProductAttribute;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ProductController extends Controller
 {
-    const MAX_IMAGES = 5;
+    private const MAX_IMAGES = 5;
+
+    /**
+     * Delete image from Cloudinary using API
+     */
+    private function deleteFromCloudinary($publicId)
+    {
+        try {
+            // Sử dụng cloud_url từ config
+            $cloudinaryUrl = config('cloudinary.cloud_url');
+            
+            if (!$cloudinaryUrl) {
+                Log::warning('Cloudinary URL not configured');
+                return;
+            }
+            
+            $cloudinary = new \Cloudinary\Cloudinary($cloudinaryUrl);
+            $cloudinary->uploadApi()->destroy($publicId);
+        } catch (\Exception $e) {
+            Log::warning('Failed to delete from Cloudinary: ' . $e->getMessage());
+        }
+    }
+
     public function index(Request $request)
     {
         $query = Product::with(['category', 'mainImage']);
 
-        // Tìm kiếm
         if ($request->has('search')) {
             $query->where('product_name', 'like', '%' . $request->search . '%');
         }
 
-        // Lọc theo category
         if ($request->has('category_id')) {
             $query->where('category_id', $request->category_id);
         }
@@ -50,7 +69,7 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'base_price' => 'required|numeric|min:0',
             'images.*' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
-             'images' => 'nullable|array|max:' . self::MAX_IMAGES,
+            'images' => 'nullable|array|max:' . self::MAX_IMAGES,
             'attributes' => 'required|array|min:1',
             'attributes.*.price' => 'required|numeric|min:0',
             'attributes.*.quantity' => 'required|integer|min:0',
@@ -61,7 +80,6 @@ class ProductController extends Controller
         $uploadedPublicIds = []; // Track uploaded images for rollback
 
         try {
-            // Bắt đầu transaction
             DB::beginTransaction();
 
             // Tạo sản phẩm
@@ -74,19 +92,18 @@ class ProductController extends Controller
 
             // Xử lý upload ảnh lên Cloudinary
             if ($request->hasFile('images')) {
-                 $images = $request->file('images');
+                $images = $request->file('images');
                 $mainImageIndex = $request->input('main_image_index', 0);
+                
+                // Validate main_image_index
+                if ($mainImageIndex < 0 || $mainImageIndex >= count($images)) {
+                    $mainImageIndex = 0;
+                }
                 
                 foreach ($images as $index => $image) {
                     try {
                         // Upload lên Cloudinary
-                        $uploadedFile = Cloudinary::upload($image->getRealPath(), [
-                            'folder' => 'products',
-                            'transformation' => [
-                                'quality' => 'auto',
-                                'fetch_format' => 'auto'
-                            ]
-                        ]);
+                        $uploadedFile = $image->storeOnCloudinary('products');
                         
                         $publicId = $uploadedFile->getPublicId();
                         $uploadedPublicIds[] = $publicId; // Track for rollback
@@ -110,8 +127,8 @@ class ProductController extends Controller
                     if (isset($attribute['price']) && isset($attribute['quantity'])) {
                         ProductAttribute::create([
                             'product_id' => $product->id,
-                            'size' => !empty($attribute['size']) ? $attribute['size'] : null,
-                            'color' => !empty($attribute['color']) ? $attribute['color'] : null,
+                            'size' => $attribute['size'] ?? null,
+                            'color' => $attribute['color'] ?? null,
                             'price' => $attribute['price'],
                             'quantity' => $attribute['quantity'],
                         ]);
@@ -119,24 +136,19 @@ class ProductController extends Controller
                 }
             }
 
-            // Commit transaction
             DB::commit();
 
             return redirect()->route('admin.products.index')
                 ->with('success', 'Sản phẩm đã được thêm thành công!');
 
         } catch (\Exception $e) {
-            // Rollback nếu có lỗi
             DB::rollBack();
             
+            // Rollback: Xóa các ảnh đã upload trên Cloudinary
             foreach ($uploadedPublicIds as $publicId) {
-                try {
-                    Cloudinary::destroy($publicId);
-                } catch (\Exception $deleteError) {
-                    Log::warning('Failed to rollback image deletion: ' . $deleteError->getMessage());
-                }
+                $this->deleteFromCloudinary($publicId);
             }
-
+            
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
@@ -173,7 +185,7 @@ class ProductController extends Controller
             'attributes.*.deleted' => 'nullable|boolean',
         ]);
 
-        $uploadedPublicIds = [];
+        $uploadedPublicIds = []; // Track uploaded images for rollback
 
         try {
             DB::beginTransaction();
@@ -206,16 +218,10 @@ class ProductController extends Controller
                     $newMainImageIndex = null;
                 }
                 
-                foreach ($request->file('images') as $index => $image) {
+                foreach ($newImages as $index => $image) {
                     try {
                         // Upload lên Cloudinary
-                        $uploadedFile = Cloudinary::upload($image->getRealPath(), [
-                            'folder' => 'products',
-                            'transformation' => [
-                                'quality' => 'auto',
-                                'fetch_format' => 'auto'
-                            ]
-                        ]);
+                        $uploadedFile = $image->storeOnCloudinary('products');
                         
                         $publicId = $uploadedFile->getPublicId();
                         $uploadedPublicIds[] = $publicId; // Track for rollback
@@ -243,7 +249,7 @@ class ProductController extends Controller
             // Handle attributes
             if (!empty($validated['attributes'])) {
                 $hasValidAttribute = false;
-
+                
                 foreach ($validated['attributes'] as $attrData) {
                     // Check if marked for deletion
                     if (isset($attrData['deleted']) && $attrData['deleted'] == '1') {
@@ -294,13 +300,9 @@ class ProductController extends Controller
             
             // Rollback: Xóa các ảnh đã upload trên Cloudinary
             foreach ($uploadedPublicIds as $publicId) {
-                try {
-                    Cloudinary::destroy($publicId);
-                } catch (\Exception $deleteError) {
-                    Log::warning('Failed to rollback image deletion: ' . $deleteError->getMessage());
-                }
+                $this->deleteFromCloudinary($publicId);
             }
-
+            
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
@@ -315,12 +317,7 @@ class ProductController extends Controller
             // Xóa images từ Cloudinary
             foreach ($product->images as $image) {
                 if (!empty($image->image_url)) {
-                    try {
-                        Cloudinary::destroy($image->image_url); // image_url chứa public_id
-                    } catch (\Exception $e) {
-                        // Log error nhưng vẫn tiếp tục xóa
-                        Log::warning('Failed to delete image from Cloudinary: ' . $e->getMessage());
-                    }
+                    $this->deleteFromCloudinary($image->image_url);
                 }
             }
 
@@ -354,7 +351,7 @@ class ProductController extends Controller
                     'message' => 'Không thể xóa ảnh chính! Vui lòng đặt ảnh khác làm ảnh chính trước.'
                 ], 400);
             }
-
+            
             // Check if this is the last image
             $imageCount = ProductImage::where('product_id', $productId)->count();
             if ($imageCount <= 1) {
@@ -366,11 +363,7 @@ class ProductController extends Controller
             
             // Delete from Cloudinary
             if (!empty($image->image_url)) {
-                try {
-                    Cloudinary::destroy($image->image_url); // image_url chứa public_id
-                } catch (\Exception $e) {
-                    Log::warning('Failed to delete image from Cloudinary: ' . $e->getMessage());
-                }
+                $this->deleteFromCloudinary($image->image_url);
             }
             
             // Delete from database
@@ -397,7 +390,7 @@ class ProductController extends Controller
         try {
             $image = ProductImage::findOrFail($id);
             $productId = $image->product_id;
-
+            
             DB::beginTransaction();
             
             // Remove main flag from all images of this product
@@ -405,7 +398,7 @@ class ProductController extends Controller
             
             // Set this image as main
             $image->update(['is_main' => 1]);
-
+            
             DB::commit();
             
             return response()->json([
@@ -415,7 +408,7 @@ class ProductController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
-
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
