@@ -16,6 +16,27 @@ class ProductController extends Controller
     private const MAX_IMAGES = 5;
 
     /**
+     * Upload image to Cloudinary
+     */
+    private function uploadToCloudinary($image, $folder = 'products')
+    {
+        $cloudinaryUrl = config('cloudinary.cloud_url');
+        
+        if (!$cloudinaryUrl) {
+            throw new \Exception('Cloudinary URL not configured');
+        }
+        
+        $cloudinary = new \Cloudinary\Cloudinary($cloudinaryUrl);
+        
+        $result = $cloudinary->uploadApi()->upload($image->getRealPath(), [
+            'folder' => $folder,
+            'resource_type' => 'auto'
+        ]);
+        
+        return $result['public_id'];
+    }
+
+    /**
      * Delete image from Cloudinary using API
      */
     private function deleteFromCloudinary($publicId)
@@ -103,9 +124,7 @@ class ProductController extends Controller
                 foreach ($images as $index => $image) {
                     try {
                         // Upload lên Cloudinary
-                        $uploadedFile = $image->storeOnCloudinary('products');
-                        
-                        $publicId = $uploadedFile->getPublicId();
+                        $publicId = $this->uploadToCloudinary($image, 'products');
                         $uploadedPublicIds[] = $publicId; // Track for rollback
                         
                         // Lưu vào database
@@ -221,9 +240,7 @@ class ProductController extends Controller
                 foreach ($newImages as $index => $image) {
                     try {
                         // Upload lên Cloudinary
-                        $uploadedFile = $image->storeOnCloudinary('products');
-                        
-                        $publicId = $uploadedFile->getPublicId();
+                        $publicId = $this->uploadToCloudinary($image, 'products');
                         $uploadedPublicIds[] = $publicId; // Track for rollback
                         
                         // Set main image nếu được chỉ định
