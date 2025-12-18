@@ -14,6 +14,7 @@ use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ProductController extends Controller
 {
+    const MAX_IMAGES = 5;
     public function index(Request $request)
     {
         $query = Product::with(['category', 'mainImage']);
@@ -414,7 +415,7 @@ class ProductController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
