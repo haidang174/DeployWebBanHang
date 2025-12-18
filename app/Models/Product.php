@@ -61,12 +61,11 @@ class Product extends Model
 
     public function getMainImageUrlAttribute()
     {
-        // Thêm asset('storage/...')
         $mainImage = $this->mainImage;
         
         if ($mainImage) {
-            // Dùng accessor 'url' từ ProductImage model
-            return $mainImage->url;
+            // Dùng accessor 'full_url' từ ProductImage model
+            return $mainImage->full_url;
         }
         
         // Trả về ảnh mặc định nếu không có ảnh
